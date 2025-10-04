@@ -13,9 +13,15 @@ pygame.display.set_caption("ECOCULTIVO")
 background_image = pygame.image.load("assets/agua.png").convert()
 bg_width, bg_height = background_image.get_size()
 
-# character
-char_image = pygame.image.load("assets/farmer.png").convert_alpha()
-character = pygame.transform.scale(char_image, (120, 110))
+# Load character images
+standing_image = pygame.image.load("assets/farmer.png").convert_alpha()
+down_image = pygame.image.load("assets/farmer_down.png").convert_alpha()
+standing_surf = pygame.transform.scale(standing_image, (120, 110))
+down_surf = pygame.transform.scale(down_image, (120, 110))
+
+# Initial state
+current_surf = standing_surf
+is_standing = True
 character_x = 650
 character_y = 400
 
@@ -24,9 +30,18 @@ while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
+        elif event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_l:
+                # Toggle between standing and down
+                if is_standing:
+                    current_surf = down_surf
+                    is_standing = False
+                else:
+                    current_surf = standing_surf
+                    is_standing = True
 
-    # Handle input first (movement)
-    speed = 5
+    # Handle input (movement only)
+    speed = 4
     keys = pygame.key.get_pressed()
     if keys[pygame.K_w] or keys[pygame.K_UP]:
         character_y -= speed
@@ -55,7 +70,7 @@ while running:
     # Draw character (offset by camera)
     char_screen_x = character_x - camera_x
     char_screen_y = character_y - camera_y
-    screen.blit(character, (char_screen_x, char_screen_y))
+    screen.blit(current_surf, (char_screen_x, char_screen_y))
 
     pygame.display.update()
     clock.tick(60)

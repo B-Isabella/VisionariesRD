@@ -16,7 +16,7 @@ character_y = 400
 def draw_character():
     screen.blit(character, (character_x, character_y))
 
-
+# game loop
 while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -25,6 +25,16 @@ while running:
     screen.fill("black")
 
     draw_character()
+    speed = 5
+    keys = pygame.key.get_pressed()
+    if keys[pygame.K_w] or keys[pygame.K_UP]:
+        character_y -= speed
+    if keys[pygame.K_s] or keys[pygame.K_DOWN]:
+        character_y += speed
+    if keys[pygame.K_a] or keys[pygame.K_LEFT]:
+        character_x -= speed
+    if keys[pygame.K_d] or keys[pygame.K_RIGHT]:
+        character_x += speed
     pygame.display.update()
 
     clock.tick(60)

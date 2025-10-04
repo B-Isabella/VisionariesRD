@@ -5,7 +5,7 @@ pygame.init()
 screen = pygame.display.set_mode((1300, 800))
 clock = pygame.time.Clock()
 running = True
-pygame.display.set_caption("NAME OF GAME")
+pygame.display.set_caption("ECOCULTIVO")
 
 # character
 char_image = pygame.image.load("assets/farmer.png", ).convert_alpha()

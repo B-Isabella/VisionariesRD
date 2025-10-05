@@ -1,6 +1,8 @@
 import pygame
 import sys
 import random
+import json
+
 
 # Constants
 WIDTH = 1300
@@ -35,12 +37,39 @@ CHARACTER_WIDTH = 100
 CHARACTER_HEIGHT = 90
 MOVEMENT_SPEED = 5
 
+score = 0
+water_used = 0
+
 # Initialize Pygame
 pygame.init()
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("ECOCULTIVO")
+
+try:
+    with open("nasa_data.json", "r") as f:
+        nasa_data = json.load(f)
+    print("NASA data loaded successfully from file.")  # Optional: for debugging
+except (FileNotFoundError, json.JSONDecodeError) as e:
+    print(f"Warning: Could not load nasa_data.json ({e}). Using default data.")
+    # Default data matching your code's expected structure
+    nasa_data = {
+           "tropical": {
+               "temperature": 28.5,
+               "soil_moisture": 0.4,
+               "rainfall": 120.0,
+               "description": "A warm, humid tropical biome with high biodiversity and frequent rains, ideal for crops like bananas and coffee."
+           },
+           "cold": {
+               "temperature": 8.2,
+               "soil_moisture": 0.25,
+               "rainfall": 60.0,
+               "description": "A cooler temperate biome with moderate temperatures, suitable for hardy crops like potatoes and berries, but requiring protection from frost."
+           }
+       }
+
 clock = pygame.time.Clock()
 font = pygame.font.Font(None, 36)
+font_desc = pygame.font.Font(None, 24)  # Smaller font for description panel
 
 # Load menu assets
 menu_bg = pygame.image.load("assets/menu.png").convert()
@@ -63,14 +92,14 @@ backgrounds = [tropical_bg, cold_bg]
 current_bg_index = 0
 
 # Map buttons for tropical and cold (centered in map view)
-tropical_button_rect = pygame.Rect(WIDTH // 2 - 100, HEIGHT // 2 - 30, 200, 50)
-cold_button_rect = pygame.Rect(WIDTH // 2 - 100, HEIGHT // 2 + 60, 200, 50)
+tropical_button_rect = pygame.Rect(WIDTH // 2 - 100, HEIGHT // 2 -25, 200, 70)
+cold_button_rect = pygame.Rect(WIDTH // 2 - 100, HEIGHT // 2 + 60, 200, 70)
 
 # Load button images
 tropical_button_img = pygame.image.load("assets/tropical_button.png").convert_alpha()
-tropical_button_img = pygame.transform.scale(tropical_button_img, (200, 80))
+tropical_button_img = pygame.transform.scale(tropical_button_img, (200, 70))
 cold_button_img = pygame.image.load("assets/cold_button.png").convert_alpha()
-cold_button_img = pygame.transform.scale(cold_button_img, (200, 80))
+cold_button_img = pygame.transform.scale(cold_button_img, (200, 70))
 
 # Load character images
 standing_img = pygame.image.load("assets/farmer.png").convert_alpha()
@@ -100,6 +129,16 @@ current_character_surf = standing_surf
 is_standing = True
 regadera = False
 
+def draw_nasa_data():
+    biome = "tropical" if current_bg_index == 0 else "cold"
+    data = nasa_data[biome]
+    info_text = f"{biome.capitalize()} | Temp: {data['temperature']}°C | Moisture: {data['soil_moisture']*100:.0f}% | Rainfall: {data['rainfall']}mm"
+    screen.blit(font.render(info_text, True, (255, 255, 255)), (20, 20))
+
+def draw_score():
+    score_text = font.render(f"Sustainability Score: {int(score)}", True, (255, 255, 255))
+    screen.blit(score_text, (WIDTH - 400, 20))
+
 def reset_tiles():
     global tiles
     tiles = [[{'watered': False, 'planted': False, 'watered_plant': False, 'watered_time': 0, 'water_count': 0, 'harvest_ready': False} for _ in range(GRID_WIDTH)] for _ in range(GRID_HEIGHT)]
@@ -127,6 +166,32 @@ def update_cow_movement():
     cow_y += cow_vely  # Vely is 0, so y stays fixed
     if cow_x <= cow_left_bound or cow_x >= cow_right_bound:
         cow_velx = -cow_velx
+
+def draw_info_panel():
+    biome = "tropical" if current_bg_index == 0 else "cold"
+    text = nasa_data[biome]["description"]
+    box_width = 380
+    box_height = 120
+    margin = 20
+    box_x = WIDTH - box_width - margin
+    box_y = HEIGHT - box_height - margin
+    pygame.draw.rect(screen, (0, 0, 0, 150), (box_x, box_y, box_width, box_height))
+    lines = []
+    words = text.split(' ')
+    line = ""
+    for word in words:
+        if len(line + word) < 50:
+            line += word + " "
+        else:
+            lines.append(line)
+            line = word + " "
+    lines.append(line)
+    text_y_start = box_y + 10
+    line_spacing = 28  # Adjusted spacing for smaller font to fit within box
+    for i, l in enumerate(lines):
+        y_pos = text_y_start + i * line_spacing
+        if y_pos + font_desc.get_height() <= box_y + box_height - 5:  # Ensure it fits vertically
+            screen.blit(font_desc.render(l.strip(), True, (255, 255, 255)), (box_x + 15, y_pos))
 
 def draw_menu():
     # Draw the main menu background and play button.
@@ -156,18 +221,15 @@ def draw_game():
             else:
                 color = DRY
             
-            # Draw tile with adjusted opacity (more opaque for similarity)
-            tile_surf = pygame.Surface((TILE_SIZE, TILE_SIZE), pygame.SRCALPHA)
-            tile_surf.fill(color)
-            alpha = 255  # Fully opaque for both biomes to make them similar and more visible
-            tile_surf.set_alpha(alpha)
-            screen.blit(tile_surf, rect.topleft)
-            
+            # Draw tile directly without opacity/alpha (fully solid)
+            pygame.draw.rect(screen, color, rect)
             pygame.draw.rect(screen, (0, 0, 0), rect, 2) 
     
+    draw_nasa_data()
+    draw_score()
+    draw_info_panel()
     screen.blit(cow_surf, (cow_x, cow_y))
     screen.blit(current_character_surf, (character_x, character_y))
-    # Draw the cow
 
 def draw_map():
     screen.blit(map_bg, (0, 0))
@@ -280,14 +342,19 @@ while running:
                         current_character_surf = regadera_surf
                         regadera = True
                 elif event.key == pygame.K_SPACE and regadera:
-                    # Water the nearest tile if possible
                     nearest = get_nearest_tile(character_x, character_y)
                     if nearest:
                         col, row = nearest
                         tile = tiles[row][col]
+                        biome = "tropical" if current_bg_index == 0 else "cold"
+                        moisture = nasa_data[biome]["soil_moisture"]
+                        water_used += 1
+
                         if tile['planted']:
                             if not tile['harvest_ready']:
-                                tile['water_count'] += 1
+                                # Adjust water effectiveness based on NASA soil moisture
+                                water_factor = 1 if moisture < 0.5 else 0.5  
+                                tile['water_count'] += water_factor
                                 tile['watered_plant'] = True
                                 tile['watered_time'] = pygame.time.get_ticks()
                                 if tile['water_count'] >= 3:
@@ -295,8 +362,8 @@ while running:
                                     tile['watered_plant'] = False
                         elif not tile['watered']:
                             tile['watered'] = True
+
                 elif event.key == pygame.K_h:
-                    # Harvest the nearest harvest-ready tile if possible
                     nearest = get_nearest_tile(character_x, character_y)
                     if nearest:
                         col, row = nearest
@@ -308,6 +375,12 @@ while running:
                             tile['harvest_ready'] = False
                             tile['water_count'] = 0
                             tile['watered_time'] = 0
+
+                            # Add sustainability score (efficient farming = better score)
+                            gain = max(5, 15 - water_used * 0.5)
+                            score += gain
+                            water_used = 0
+
                 elif event.key == pygame.K_p and not regadera:
                     # Plant on the nearest watered, unplanted tile if possible
                     nearest = get_nearest_tile(character_x, character_y)
@@ -331,7 +404,7 @@ while running:
     
     # Update display and cap FPS
     pygame.display.flip()
-    clock.tick(60)
+    clock.tick(70)
 
 # Cleanup
 pygame.quit()

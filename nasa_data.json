@@ -1,0 +1,14 @@
+{
+    "tropical": {
+        "temperature": 28.5,
+        "soil_moisture": 0.4,
+        "rainfall": 120.0,
+        "description": "A warm, humid tropical biome with high biodiversity and frequent rains, ideal for crops like bananas and coffee."
+    },
+    "cold": {
+        "temperature": 8.2,
+        "soil_moisture": 0.25,
+        "rainfall": 60.0,
+        "description": "A cooler temperate biome with moderate temperatures, suitable for hardy crops like potatoes and berries, but requiring protection from frost."
+    }
+}

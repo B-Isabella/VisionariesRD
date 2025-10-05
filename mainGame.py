@@ -4,12 +4,6 @@ import sys
 # Constants
 WIDTH = 1300
 HEIGHT = 800
-BLACK = (0, 0, 0)
-WHITE = (255, 255, 255)
-RED = (255, 0, 0)
-BLUE = (0, 0, 255)
-WATERBLUE = (31, 170, 220)
-GREEN = (0, 255, 0)
 
 # Game states
 MENU = 0
@@ -46,14 +40,19 @@ game_bg = pygame.transform.scale(game_bg, (WIDTH, HEIGHT))
 # Load character images
 standing_img = pygame.image.load("assets/farmer.png").convert_alpha()
 down_img = pygame.image.load("assets/farmer_down.png").convert_alpha()
+regadera_img = pygame.image.load("assets/regadera.png").convert_alpha()
+regadera_down_img = pygame.image.load("assets/regadera_down.png").convert_alpha()
+regadera_down_surf = pygame.transform.scale(regadera_down_img, (CHARACTER_WIDTH - 5, CHARACTER_HEIGHT + 10))
 standing_surf = pygame.transform.scale(standing_img, (CHARACTER_WIDTH, CHARACTER_HEIGHT))
 down_surf = pygame.transform.scale(down_img, (CHARACTER_WIDTH, CHARACTER_HEIGHT))
+regadera_surf = pygame.transform.scale(regadera_img, (CHARACTER_WIDTH - 5, CHARACTER_HEIGHT + 10))
 
 # Character state
 character_x = WIDTH // 2
 character_y = HEIGHT // 2
 current_character_surf = standing_surf
 is_standing = True
+regadera = False
 
 def draw_menu():
     # Draw the main menu background and play button.
@@ -120,12 +119,27 @@ while running:
                 current_state = MENU
             elif event.key == pygame.K_l:
                 # Toggle between standing and down poses
-                if is_standing:
-                    current_character_surf = down_surf
-                    is_standing = False
-                else:
+                if regadera:  # If in regadera mode
+                    if is_standing:
+                        current_character_surf = regadera_down_surf  # Use regadera down sprite
+                        is_standing = False
+                    else:
+                        current_character_surf = regadera_surf  # Keep regadera sprite
+                        is_standing = True
+                else:  # Regular mode
+                    if is_standing:
+                        current_character_surf = down_surf  # Use regular down sprite
+                        is_standing = False
+                    else:
+                        current_character_surf = standing_surf  # Use regular standing sprite
+                        is_standing = True
+            elif event.key == pygame.K_r:
+                if regadera:
                     current_character_surf = standing_surf
-                    is_standing = True
+                    regadera = False
+                else:
+                    current_character_surf = regadera_surf
+                    regadera = True
     
     # Update game state (only for game mode)
     if current_state == GAME:

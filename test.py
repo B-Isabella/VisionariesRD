@@ -6,7 +6,8 @@ WIDTH = 1300
 HEIGHT = 800
 DRY = (160, 82, 45)  # Dry dirt
 WET = (101, 67, 33)  # Watered dirt
-PLANTED = (0, 128, 0)  # Planted (green)
+PLANTED = (0, 200, 0)  # Planted (green)
+WATERED_PLANT = (0, 128, 0)  # Watered plant (brighter green)
 
 # Game states
 MENU = 0
@@ -14,7 +15,7 @@ GAME = 1
 current_state = MENU
 
 # Tabla
-BORDER = pygame.Rect(40, 50, 170, HEIGHT - 80)
+BORDER = pygame.Rect(60, 60, 160, HEIGHT - 100)
 HOUSE = pygame.Rect(1095, 120, 190, 130)
 
 GRID_START_X = 343
@@ -24,7 +25,7 @@ GRID_WIDTH = 5
 GRID_HEIGHT = 9
 INTERACTION_RANGE = 130 
 
-tiles = [[{'watered': False, 'planted': False} for _ in range(GRID_WIDTH)] for _ in range(GRID_HEIGHT)]
+tiles = [[{'watered': False, 'planted': False, 'watered_plant': False, 'watered_time': 0} for _ in range(GRID_WIDTH)] for _ in range(GRID_HEIGHT)]
 
 # Character settings
 CHARACTER_WIDTH = 100
@@ -90,16 +91,21 @@ def draw_menu():
 
 def draw_game():
     # Draw the game background and character.
+    pygame.draw.rect(screen, (196, 160, 146), BORDER)
     pygame.draw.rect(screen, (0, 0, 0), HOUSE)
     screen.blit(game_bg, (0, 0))
-    pygame.draw.rect(screen, (196, 160, 146), BORDER)
 
+    current_time = pygame.time.get_ticks()
     for row in range(GRID_HEIGHT):
         for col in range(GRID_WIDTH):
             rect = pygame.Rect(GRID_START_X + col * TILE_SIZE, GRID_START_Y + row * TILE_SIZE, TILE_SIZE, TILE_SIZE)
             tile = tiles[row][col]
             if tile['planted']:
-                color = PLANTED
+                if tile['watered_plant'] and current_time - tile['watered_time'] < 30000:
+                    color = WATERED_PLANT
+                else:
+                    color = PLANTED
+                    tile['watered_plant'] = False
             elif tile['watered']:
                 color = WET
             else:
@@ -188,8 +194,12 @@ while running:
                 nearest = get_nearest_tile(character_x, character_y)
                 if nearest:
                     col, row = nearest
-                    if not tiles[row][col]['watered']:
-                        tiles[row][col]['watered'] = True
+                    tile = tiles[row][col]
+                    if tile['planted']:
+                        tile['watered_plant'] = True
+                        tile['watered_time'] = pygame.time.get_ticks()
+                    elif not tile['watered']:
+                        tile['watered'] = True
             elif event.key == pygame.K_p and not regadera:
                 # Plant on the nearest watered, unplanted tile if possible
                 nearest = get_nearest_tile(character_x, character_y)

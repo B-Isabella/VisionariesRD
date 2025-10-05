@@ -3,7 +3,6 @@ import sys
 import random
 import json
 
-
 # Constants
 WIDTH = 1300
 HEIGHT = 800
@@ -39,6 +38,7 @@ MOVEMENT_SPEED = 5
 
 score = 0
 water_used = 0
+harvest_count = 0
 
 # Initialize Pygame
 pygame.init()
@@ -133,11 +133,15 @@ def draw_nasa_data():
     biome = "tropical" if current_bg_index == 0 else "cold"
     data = nasa_data[biome]
     info_text = f"{biome.capitalize()} | Temp: {data['temperature']}°C | Moisture: {data['soil_moisture']*100:.0f}% | Rainfall: {data['rainfall']}mm"
-    screen.blit(font.render(info_text, True, (255, 255, 255)), (20, 20))
+    # Use darker text color for cold biome
+    text_color = (0, 0, 0) if current_bg_index == 1 else (255, 255, 255)
+    screen.blit(font.render(info_text, True, text_color), (20, 20))
 
 def draw_score():
-    score_text = font.render(f"Sustainability Score: {int(score)}", True, (255, 255, 255))
-    screen.blit(score_text, (WIDTH - 400, 20))
+    # Use darker text color for cold biome
+    text_color = (0, 0, 0) if current_bg_index == 1 else (255, 255, 255)
+    combined_text = font.render(f"Sustainability Score: {int(score)} | Harvests: {harvest_count}", True, text_color)
+    screen.blit(combined_text, (WIDTH - 470, 20))  # Adjusted x-position to fit the combined text on the top line, moved 20 pixels left
 
 def reset_tiles():
     global tiles
@@ -188,10 +192,12 @@ def draw_info_panel():
     lines.append(line)
     text_y_start = box_y + 10
     line_spacing = 28  # Adjusted spacing for smaller font to fit within box
+    # Keep white text for the description panel (on dark semi-transparent box)
+    text_color = (255, 255, 255)
     for i, l in enumerate(lines):
         y_pos = text_y_start + i * line_spacing
         if y_pos + font_desc.get_height() <= box_y + box_height - 5:  # Ensure it fits vertically
-            screen.blit(font_desc.render(l.strip(), True, (255, 255, 255)), (box_x + 15, y_pos))
+            screen.blit(font_desc.render(l.strip(), True, text_color), (box_x + 15, y_pos))
 
 def draw_menu():
     # Draw the main menu background and play button.
@@ -204,6 +210,7 @@ def draw_game():
     screen.blit(backgrounds[current_bg_index], (0, 0))
 
     current_time = pygame.time.get_ticks()
+    biome_dry_time = 30000 if current_bg_index == 0 else 45000
     for row in range(GRID_HEIGHT):
         for col in range(GRID_WIDTH):
             rect = pygame.Rect(GRID_START_X + col * TILE_SIZE, GRID_START_Y + row * TILE_SIZE, TILE_SIZE, TILE_SIZE)
@@ -211,7 +218,7 @@ def draw_game():
             if tile['harvest_ready']:
                 color = HARVEST_READY
             elif tile['planted']:
-                if tile['watered_plant'] and current_time - tile['watered_time'] < 30000:
+                if tile['watered_plant'] and current_time - tile['watered_time'] < biome_dry_time:
                     color = WATERED_PLANT
                 else:
                     color = PLANTED
@@ -348,20 +355,26 @@ while running:
                         tile = tiles[row][col]
                         biome = "tropical" if current_bg_index == 0 else "cold"
                         moisture = nasa_data[biome]["soil_moisture"]
-                        water_used += 1
+                        current_time = pygame.time.get_ticks()
+                        biome_dry_time = 30000 if current_bg_index == 0 else 45000
 
                         if tile['planted']:
                             if not tile['harvest_ready']:
-                                # Adjust water effectiveness based on NASA soil moisture
-                                water_factor = 1 if moisture < 0.5 else 0.5  
-                                tile['water_count'] += water_factor
-                                tile['watered_plant'] = True
-                                tile['watered_time'] = pygame.time.get_ticks()
-                                if tile['water_count'] >= 3:
-                                    tile['harvest_ready'] = True
-                                    tile['watered_plant'] = False
+                                # Check if the plant is already watered (within biome-specific time)
+                                is_recently_watered = tile['watered_plant'] and (current_time - tile['watered_time'] < biome_dry_time)
+                                if not is_recently_watered:
+                                    # Adjust water effectiveness based on NASA soil moisture
+                                    water_factor = 1 if moisture < 0.5 else 0.5  
+                                    tile['water_count'] += water_factor
+                                    tile['watered_plant'] = True
+                                    tile['watered_time'] = current_time
+                                    water_used += 1
+                                    if tile['water_count'] >= 3:
+                                        tile['harvest_ready'] = True
+                                        tile['watered_plant'] = False
                         elif not tile['watered']:
                             tile['watered'] = True
+                            water_used += 1
 
                 elif event.key == pygame.K_h:
                     nearest = get_nearest_tile(character_x, character_y)
@@ -380,6 +393,7 @@ while running:
                             gain = max(5, 15 - water_used * 0.5)
                             score += gain
                             water_used = 0
+                            harvest_count += 1
 
                 elif event.key == pygame.K_p and not regadera:
                     # Plant on the nearest watered, unplanted tile if possible
@@ -404,7 +418,7 @@ while running:
     
     # Update display and cap FPS
     pygame.display.flip()
-    clock.tick(70)
+    clock.tick(60)
 
 # Cleanup
 pygame.quit()

@@ -4,6 +4,9 @@ import sys
 # Constants
 WIDTH = 1300
 HEIGHT = 800
+DRY = (160, 82, 45)  # Dry dirt
+WET = (101, 67, 33)  # Watered dirt
+PLANTED = (0, 128, 0)  # Planted (green)
 
 # Game states
 MENU = 0
@@ -13,6 +16,15 @@ current_state = MENU
 # Tabla
 BORDER = pygame.Rect(40, 50, 170, HEIGHT - 80)
 HOUSE = pygame.Rect(1095, 120, 190, 130)
+
+GRID_START_X = 343
+GRID_START_Y = 200
+TILE_SIZE = 60
+GRID_WIDTH = 5
+GRID_HEIGHT = 9
+INTERACTION_RANGE = 130 
+
+tiles = [[{'watered': False, 'planted': False} for _ in range(GRID_WIDTH)] for _ in range(GRID_HEIGHT)]
 
 # Character settings
 CHARACTER_WIDTH = 100
@@ -54,6 +66,23 @@ current_character_surf = standing_surf
 is_standing = True
 regadera = False
 
+def get_nearest_tile(char_x, char_y):
+    min_dist = float('inf')
+    nearest = None
+    char_center_x = char_x + CHARACTER_WIDTH // 2
+    char_center_y = char_y + CHARACTER_HEIGHT // 2
+    
+    for row in range(GRID_HEIGHT):
+        for col in range(GRID_WIDTH):
+            tile_center_x = GRID_START_X + (col + 0.5) * TILE_SIZE
+            tile_center_y = GRID_START_Y + (row + 0.5) * TILE_SIZE
+            dist = ((char_center_x - tile_center_x) ** 2 + (char_center_y - tile_center_y) ** 2) ** 0.5
+            if dist < min_dist and dist <= INTERACTION_RANGE:
+                min_dist = dist
+                nearest = (col, row)
+    
+    return nearest
+
 def draw_menu():
     # Draw the main menu background and play button.
     screen.blit(menu_bg, (0, 0))
@@ -64,6 +93,20 @@ def draw_game():
     pygame.draw.rect(screen, (0, 0, 0), HOUSE)
     screen.blit(game_bg, (0, 0))
     pygame.draw.rect(screen, (196, 160, 146), BORDER)
+
+    for row in range(GRID_HEIGHT):
+        for col in range(GRID_WIDTH):
+            rect = pygame.Rect(GRID_START_X + col * TILE_SIZE, GRID_START_Y + row * TILE_SIZE, TILE_SIZE, TILE_SIZE)
+            tile = tiles[row][col]
+            if tile['planted']:
+                color = PLANTED
+            elif tile['watered']:
+                color = WET
+            else:
+                color = DRY
+            pygame.draw.rect(screen, color, rect)
+            pygame.draw.rect(screen, (0, 0, 0), rect, 2) 
+    
     screen.blit(current_character_surf, (character_x, character_y))
 
 def update_character_movement():
@@ -140,6 +183,20 @@ while running:
                 else:
                     current_character_surf = regadera_surf
                     regadera = True
+            elif event.key == pygame.K_SPACE and regadera:
+                # Water the nearest tile if possible
+                nearest = get_nearest_tile(character_x, character_y)
+                if nearest:
+                    col, row = nearest
+                    if not tiles[row][col]['watered']:
+                        tiles[row][col]['watered'] = True
+            elif event.key == pygame.K_p and not regadera:
+                # Plant on the nearest watered, unplanted tile if possible
+                nearest = get_nearest_tile(character_x, character_y)
+                if nearest:
+                    col, row = nearest
+                    if tiles[row][col]['watered'] and not tiles[row][col]['planted']:
+                        tiles[row][col]['planted'] = True
     
     # Update game state (only for game mode)
     if current_state == GAME:
